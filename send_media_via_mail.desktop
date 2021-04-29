@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Send images/videos via e-mail
+Name[sk]=Poslať obrázky/videá e-mailom
+Comment=Send images/videos as e-mail attachment
+Comment[sk]=Poslať obrázky/videá v prílohe e-mailu
+Exec=send_media_via_mail.py %F
+NoDisplay=true
+Icon=mail-attachment
+MimeType=image/jpeg;image/png;video/x-msvideo;video/mp4
+Categories=Application;Network
+StartupNotify=false
+Terminal=false
