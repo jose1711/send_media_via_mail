@@ -9,7 +9,13 @@ Images are scaled down and quality is lowered to reduce size of the e-mail. Vide
 
 ## Installation instructions
 
-Install viagee/gnome-gmail (https://github.com/davesteele/viagee)
+Install dependencies:
+  - viagee/gnome-gmail (https://github.com/davesteele/viagee)
+  - xosd (progress indication)
+  - python-pillow (resizing + recompression)
+  - python-piexif (rotation tag stored in EXIF)
+  - python-filetype (detection of image/video file)
+
 
 Adjust `sender` variable!
 

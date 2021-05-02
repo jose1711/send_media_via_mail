@@ -13,7 +13,12 @@ Images are scaled down and quality is lowered to reduce size of the e-mail. Vide
 
 == Installation instructions ==
 
-Install viagee/gnome-gmail (https://github.com/davesteele/viagee)
+Install dependencies:
+  - viagee/gnome-gmail (https://github.com/davesteele/viagee)
+  - xosd (progress indication)
+  - python-pillow (resizing + recompression)
+  - python-piexif (rotation tag stored in EXIF)
+  - python-filetype (detection of image/video file)
 
 Adjust sender variable!
 
@@ -63,19 +68,19 @@ mailer = 'viagee -r'
 # change this!
 sender = 'USERNAME@gmail.com'
 
-# this will hold an email message as RFC822 file
-_, temp_file = mkstemp()
 
 logging.basicConfig(level=logging.INFO)
 
-message = MIMEMultipart('mixed')
-message['From'] = 'Contact <{sender}>'.format(sender=sender)
-message['Subject'] = 'Sent from digiKam'
 
-email_body = '<b>Sent from digiKam</b>'
+def get_message():
+    message = MIMEMultipart('mixed')
+    message['From'] = 'Contact <{sender}>'.format(sender=sender)
+    email_body = '<b>Sent from digiKam</b>'
 
-body = MIMEText(email_body, 'html')
-message.attach(body)
+    body = MIMEText(email_body, 'html')
+    message.attach(body)
+    return message
+
 
 # if the attachment is an image, resize it
 def get_image(filename):
@@ -115,7 +120,13 @@ def get_video(filename):
 
 if __name__ == "__main__":
     attachments_count = 0
-    for filename in sys.argv[1:]:
+    # size after converting to MIME format, once exceeded a new e-mail
+    # will be composed
+    size_limit = 12750000
+    filenames = sys.argv[1:]
+    messages = []
+    message = get_message()
+    for filename_index, filename in enumerate(filenames, start=1):
         if not os.path.isfile(filename):
             print('No such file: {}, skipping'.format(filename))
             continue
@@ -128,20 +139,34 @@ if __name__ == "__main__":
         if attachment:
             attachment.add_header('Content-Disposition',
                                   'attachment; filename= {}'.format(os.path.split(filename)[-1]))
+            if len(message.as_string()) + len(attachment.as_string()) + 40 > size_limit:
+                messages.append(message)
+                message = get_message()
+                logging.info('E-mail size limit exceeded, creating a new e-mail')
             message.attach(attachment)
             attachments_count += 1
             logging.info('Attached {}'.format(filename))
         else:
             print('Could not attach {}'.format(filename))
+        # progress indication
+        subprocess.call(shlex.split('osd_cat -A center '
+                                             '-b percentage '
+                                             '-p middle '
+                                             '-P {} -d 1'.format(filename_index*100/len(filenames))))
 
-    with open(temp_file, 'w') as f:
-        f.write(message.as_string())
-        logging.info('E-mail written to {}'.format(temp_file))
+    messages.append(message)
 
-    if attachments_count:
-        logging.info('Sending e-mail'.format(temp_file))
-        subprocess.call(shlex.split(mailer) + [temp_file])
-    else:
+    if attachments_count == 0:
         logging.info('Nothing to send, terminating')
+        sys.exit(1)
 
-    os.remove(temp_file)
+    for message_index, message in enumerate(messages, start=1):
+        # this will hold an email message as RFC822 file
+        _, temp_file = mkstemp()
+        with open(temp_file, 'w') as f:
+            message['Subject'] = 'Sent from digiKam ({}/{})'.format(message_index, len(messages))
+            f.write(message.as_string())
+            logging.info('E-mail written to {}'.format(temp_file))
+            logging.info('Sending e-mail'.format(temp_file))
+            subprocess.call(shlex.split(mailer) + [temp_file])
+        os.remove(temp_file)
