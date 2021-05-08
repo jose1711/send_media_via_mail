@@ -96,7 +96,7 @@ def get_image(filename):
             else:
                 exif_bytes = b''
             
-            if size[0] > image_length:
+            if image_in.size[0] > image_length:
                 image_out = image_in.resize(size)
             else:
                 image_out = image_in.copy()
